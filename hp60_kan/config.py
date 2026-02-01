@@ -31,7 +31,7 @@ GRID_EPS = 0.02
 # Training
 EPOCHS = 60
 BATCH_SIZE = 256
-LEARNING_RATE = 5e-5
+LEARNING_RATE = 0.0001
 WEIGHT_DECAY = 1e-5
 
 # Regularization
