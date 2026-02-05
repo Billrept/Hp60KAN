@@ -1,0 +1,12 @@
+{
+    "input_dim": 12,
+    "hidden_dims": [
+        64,
+        64,
+        64
+    ],
+    "output_dim": 1,
+    "grid_size": 5,
+    "spline_order": 3,
+    "grid_eps": 0.02
+}

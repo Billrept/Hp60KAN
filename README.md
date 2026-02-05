@@ -18,6 +18,7 @@ A machine learning project using **Kolmogorov-Arnold Networks (KAN)** to predict
 | MAE | 0.095 Hp60 units |
 | RMSE | 0.118 Hp60 units |
 | R² | 0.993 |
+| Pearson Correlation | 0.996 |
 
 ### Performance by Geomagnetic Activity Level
 
@@ -72,17 +73,17 @@ progressive_alpha = alpha * (1 + y)^2
 loss = MSE * progressive_alpha  # when y > threshold and prediction < y
 ```
 
-Configuration:
-- `ASYMMETRIC_ALPHA = 8.0` - Base penalty multiplier
-- `HIGH_VALUE_THRESHOLD = 0.3` - Normalized threshold for "high" values
+Configuration (after tuning):
+- `ASYMMETRIC_ALPHA = 6.0` - Base penalty multiplier
+- `HIGH_VALUE_THRESHOLD = 0.35` - Normalized threshold for "high" values
 
 #### 2. Stratified Batch Sampling
 
 Every training batch contains a **guaranteed proportion of high-activity samples**:
 
 ```python
-# 50% of each batch must be high-activity samples
-HIGH_ACTIVITY_RATIO = 0.5
+# 40% of each batch must be high-activity samples (tuned from 50%)
+HIGH_ACTIVITY_RATIO = 0.4
 HIGH_ACTIVITY_PERCENTILE = 70  # Top 30% of Hp60 values
 ```
 
@@ -93,10 +94,10 @@ This ensures the model sees extreme events in every batch, not just occasionally
 Higher Hp60 values receive exponentially higher sample weights:
 
 ```python
-weight = 1 + (Hp60 / max_Hp60)^3.0
+weight = 1 + (Hp60 / max_Hp60)^2.5  # tuned from 3.0
 ```
 
-With `WEIGHT_POWER = 3.0`, a sample with Hp60 = 9 has ~2x the weight of a quiet sample.
+With `WEIGHT_POWER = 2.5`, a sample with Hp60 = 9 has ~2x the weight of a quiet sample.
 
 #### 4. Log Transform Option
 

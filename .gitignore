@@ -46,8 +46,6 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
-outputs/
-saved_models/
 
 # Logs
 *.log
