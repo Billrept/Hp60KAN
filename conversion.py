@@ -1,8 +1,8 @@
 import csv
 
 # Configuration
-input_filename = 'hp60_2026.rtf'
-output_filename = 'hpodata_2000-2025.csv'
+input_filename = 'new.txt'
+output_filename = 'hpodata_2026_1-2.csv'
 
 # Header columns based on file description
 header = ["YYYY", "MM", "DD", "hh.h", "hh._m", "days", "days_m", "Hp60", "ap60", "D"]
@@ -32,7 +32,7 @@ def convert_to_csv(in_file, out_file):
                     writer.writerow(parts[:10])
                     
         print(f"Successfully converted '{in_file}' to '{out_file}'")
-        
+
     except FileNotFoundError:
         print(f"Error: The file '{in_file}' was not found.")
     except Exception as e:

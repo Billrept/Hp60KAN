@@ -78,13 +78,16 @@ class DataLoader:
 
 
 class DataNormalizer:
-    """Data normalization."""
+    """Data normalization with optional log transform for target."""
     
-    def __init__(self):
+    def __init__(self, use_log_transform: bool = False):
         self.X_min = None
         self.X_max = None
         self.y_min = None
         self.y_max = None
+        self.y_log_min = None
+        self.y_log_max = None
+        self.use_log_transform = use_log_transform
         self.is_fitted = False
         
     def fit(self, X: np.ndarray, y: np.ndarray):
@@ -92,6 +95,13 @@ class DataNormalizer:
         self.X_max = X.max(axis=0)
         self.y_min = y.min()
         self.y_max = y.max()
+        
+        if self.use_log_transform:
+            y_log = np.log1p(y)
+            self.y_log_min = y_log.min()
+            self.y_log_max = y_log.max()
+            print(f"Log transform enabled: y_log range [{self.y_log_min:.4f}, {self.y_log_max:.4f}]")
+        
         self.is_fitted = True
         
     def transform_X(self, X: np.ndarray) -> np.ndarray:
@@ -102,12 +112,22 @@ class DataNormalizer:
     def transform_y(self, y: np.ndarray) -> np.ndarray:
         if not self.is_fitted:
             raise ValueError("Normalizer not fitted. Call fit() first.")
-        return (y - self.y_min) / (self.y_max - self.y_min + 1e-8)
+        
+        if self.use_log_transform:
+            y_log = np.log1p(y)
+            return (y_log - self.y_log_min) / (self.y_log_max - self.y_log_min + 1e-8)
+        else:
+            return (y - self.y_min) / (self.y_max - self.y_min + 1e-8)
     
     def inverse_transform_y(self, y_norm: np.ndarray) -> np.ndarray:
         if not self.is_fitted:
             raise ValueError("Normalizer not fitted. Call fit() first.")
-        return y_norm * (self.y_max - self.y_min) + self.y_min
+        
+        if self.use_log_transform:
+            y_log = y_norm * (self.y_log_max - self.y_log_min) + self.y_log_min
+            return np.expm1(y_log)
+        else:
+            return y_norm * (self.y_max - self.y_min) + self.y_min
     
     def fit_transform(self, X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         self.fit(X, y)
@@ -120,18 +140,27 @@ class DataNormalizer:
         return X_norm, y_norm
     
     def get_params(self) -> Dict:
-        return {
+        params = {
             'X_min': self.X_min,
             'X_max': self.X_max,
             'y_min': self.y_min,
-            'y_max': self.y_max
+            'y_max': self.y_max,
+            'use_log_transform': self.use_log_transform
         }
+        if self.use_log_transform:
+            params['y_log_min'] = self.y_log_min
+            params['y_log_max'] = self.y_log_max
+        return params
     
     def set_params(self, params: Dict):
         self.X_min = params['X_min']
         self.X_max = params['X_max']
         self.y_min = float(params['y_min'])
         self.y_max = float(params['y_max'])
+        self.use_log_transform = bool(params.get('use_log_transform', False))
+        if self.use_log_transform:
+            self.y_log_min = float(params['y_log_min'])
+            self.y_log_max = float(params['y_log_max'])
         self.is_fitted = True
     
     def save(self, filepath: str):
@@ -139,9 +168,60 @@ class DataNormalizer:
         print(f"Scaler parameters saved to {filepath}")
         
     def load(self, filepath: str):
-        params = np.load(filepath)
+        params = np.load(filepath, allow_pickle=True)
         self.set_params(params)
         print(f"Scaler parameters loaded from {filepath}")
+
+
+class StratifiedBatchSampler:
+    """Stratified batch sampler that ensures high activity samples in each batch."""
+    
+    def __init__(self, y: np.ndarray, high_activity_ratio: float = 0.3, 
+                 high_activity_percentile: float = 75):
+        """
+        Args:
+            y: Target values (normalized)
+            high_activity_ratio: Ratio of high activity samples per batch
+            high_activity_percentile: Percentile threshold for high activity
+        """
+        self.high_activity_ratio = high_activity_ratio
+        threshold = np.percentile(y, high_activity_percentile)
+        
+        self.high_indices = np.where(y.flatten() >= threshold)[0]
+        self.low_indices = np.where(y.flatten() < threshold)[0]
+        
+        print(f"Stratified sampling: {len(self.high_indices)} high activity samples "
+              f"(threshold >= {threshold:.4f}), {len(self.low_indices)} regular samples")
+    
+    def iterate(self, batch_size: int, X: np.ndarray, y: np.ndarray, 
+                weights: np.ndarray = None):
+        """Yield stratified batches."""
+        n_high = max(1, int(batch_size * self.high_activity_ratio))
+        n_low = batch_size - n_high
+        
+        # Shuffle indices
+        high_idx_shuffled = np.random.permutation(self.high_indices)
+        low_idx_shuffled = np.random.permutation(self.low_indices)
+        
+        # Calculate number of complete batches
+        n_high_batches = len(high_idx_shuffled) // n_high
+        n_low_batches = len(low_idx_shuffled) // n_low
+        n_batches = min(n_high_batches, n_low_batches)
+        
+        for i in range(n_batches):
+            high_batch_idx = high_idx_shuffled[i * n_high:(i + 1) * n_high]
+            low_batch_idx = low_idx_shuffled[i * n_low:(i + 1) * n_low]
+            batch_idx = np.concatenate([high_batch_idx, low_batch_idx])
+            np.random.shuffle(batch_idx)
+            
+            X_batch = X[batch_idx]
+            y_batch = y[batch_idx]
+            
+            if weights is not None:
+                w_batch = weights[batch_idx]
+                yield X_batch, y_batch, w_batch
+            else:
+                yield X_batch, y_batch
 
 
 def split_data(X: np.ndarray, y: np.ndarray, 

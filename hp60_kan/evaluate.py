@@ -41,7 +41,7 @@ class ModelEvaluator:
         Returns:
             DataFrame with reserved data
         """
-        data_path = data_path or config.DATA_PATH
+        data_path = data_path or config.NEW_DATA
         use_ratio = use_ratio or config.DATA_USE_RATIO
         
         # Load full data

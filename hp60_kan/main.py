@@ -65,7 +65,7 @@ def main():
         viz = create_visualizer(load_model=False, load_data=True)
         
         os.makedirs(config.OUTPUT_DIR, exist_ok=True)
-        
+
         viz.plot_hp60_distribution(
             save_path=os.path.join(config.OUTPUT_DIR, 'hp60_distribution.png'))
         viz.plot_daily_pattern(
