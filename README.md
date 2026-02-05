@@ -285,6 +285,4 @@ The model is trained on `hpodata_2000-2025.csv`:
 - **MLX-KAN**: Implementation of KAN for Apple MLX framework
 - **Hp60 Index**: High-resolution geomagnetic activity index (Hpo indices)
 
-## License
 
-MIT License
